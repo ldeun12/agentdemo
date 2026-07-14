@@ -19,8 +19,8 @@ def build_transcript_prompt(department_hint: str | None = None) -> str:
 
 {{
   "department": "학과/학부/전공명 또는 빈 문자열",
-  "student_number": "학번 또는 null",
-  "admission_year": "null",
+  "student_number": null,
+  "admission_year": null,
   "total_earned_credits": 0,
   "major_credits": 0,
   "general_education_credits": 0,
@@ -28,15 +28,15 @@ def build_transcript_prompt(department_hint: str | None = None) -> str:
   "general_education_advanced_credits": 0,
   "general_elective_credits": 0,
   "gpa": null,
-  "latest_semester_gpa": "null",
-  "latest_semester_credits": "null",
+  "latest_semester_gpa": null,
+  "latest_semester_credits": null,
   "completed_courses": [
     {{
       "course_name": "과목명",
       "credits": 0,
-      "grade": "성적 또는 null",
-      "category": "전공필수, 전공선택, 교양 등 또는 null",
-      "semester": "이수 학기 또는 null"
+      "grade": null,
+      "category": null,
+      "semester": null
     }}
   ]
 }}
@@ -72,8 +72,14 @@ def build_transcript_prompt(department_hint: str | None = None) -> str:
     요약 표가 아니라, 성적표에 학기별로 나뉘어 있는 과목 목록 중
     가장 마지막(최근) 학기 구획의 "평점 평균"과 "학점 계"를
     찾아서 채우세요. 전체 누적 평점(gpa)과는 다른 값입니다.
+14. 모든 학점 항목은 성적증명서에 표기된 실제 취득학점을 그대로 반환하세요.
+    졸업요건이나 최소 이수기준에 맞춰 값을 줄이거나, 상한을 적용하거나,
+    임의로 보정하지 마세요. 기준을 초과한 학점도 그대로 반환하세요.
+15. general_education_common_credits와
+    general_education_advanced_credits의 합이
+    general_education_credits와 일치하는지 검산하세요.
+    일치하지 않으면 학점 취득내역 요약 표를 다시 읽으세요.
 
-{hint_line}
 """.strip()
 
 def extract_transcript_data(
