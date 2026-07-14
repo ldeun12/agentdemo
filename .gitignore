@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 temp/
 .pytest_cache/
+data/public/*.pdf
