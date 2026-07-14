@@ -16,9 +16,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any, Optional
 
-import boto3
 import pdfplumber
-from botocore.exceptions import BotoCoreError, ClientError
 
 from config.settings import settings
 from src.schemas import CurriculumRequirements
@@ -30,10 +28,8 @@ logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 
 class CurriculumPdfNotFoundError(RuntimeError):
-    """S3에서 교육과정 편람 PDF를 찾지 못했을 때 발생합니다."""
+    """로컬에서 교육과정 편람 PDF를 찾지 못했을 때 발생합니다."""
 
-
-_CACHE_DIR = Path("/tmp/curriculum_pdf_cache")
 
 _COURSE_HEADER_KEYS = [
     "이수학년",
@@ -92,7 +88,7 @@ def _clean_range_text(value: Any) -> str:
 
 def get_curriculum_pdf_path(admission_year: Optional[int] = None) -> Path:
     """
-    S3에 업로드된 교육과정편람 PDF를 로컬 캐시로 내려받고 경로를 반환합니다.
+    data/public 폴더의 교육과정편람 PDF 경로를 반환합니다.
 
     학과별 교육과정은 매년 바뀌고, 학생은 원칙적으로 본인 입학연도의
     교육과정을 따릅니다. 그래서 여러 연도의 편람이 함께 업로드되어
@@ -100,90 +96,20 @@ def get_curriculum_pdf_path(admission_year: Optional[int] = None) -> Path:
     "학생의 입학연도가 파일명에 포함된 파일"을 우선 선택합니다.
     일치하는 파일이 없으면 가장 최근에 수정된 파일로 폴백합니다.
 
-    이미 캐시되어 있으면 재다운로드하지 않습니다.
+    입학연도가 파일명에 있으면 해당 연도 파일을 우선합니다.
     """
 
-    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-    bucket_name = settings.transcript_temp_bucket
-    prefix = settings.curriculum_s3_prefix
-
-    s3_client = boto3.client("s3", region_name=settings.aws_region)
-
-    try:
-        response = s3_client.list_objects_v2(
-            Bucket=bucket_name,
-            Prefix=f"{prefix}/",
-        )
-
-    except (ClientError, BotoCoreError) as error:
+    public_dir = settings.data_dir / "public"
+    pdfs = [p for p in public_dir.glob("*.pdf") if "장학" not in p.name and "scholarship" not in p.name.lower()]
+    if not pdfs:
         raise CurriculumPdfNotFoundError(
-            f"S3에서 교육과정편람 목록을 가져오지 못했습니다: {error}"
-        ) from error
-
-    contents = response.get("Contents", [])
-
-    pdf_items = [
-        item
-        for item in contents
-        if item["Key"].lower().endswith(".pdf")
-    ]
-
-    if not pdf_items:
-        raise CurriculumPdfNotFoundError(
-            f"s3://{bucket_name}/{prefix}/ 아래에 교육과정편람 PDF가 없습니다."
+            f"{public_dir} 폴더에 교육과정편람 PDF가 없습니다."
         )
-
-    print(f"--- s3://{bucket_name}/{prefix}/ 에서 발견된 PDF 목록 ---")
-
-    for item in pdf_items:
-        print(f"  {item['Key']}  (수정일: {item.get('LastModified')})")
-
-    target_item = None
-
-    if admission_year is not None:
-        year_matches = [
-            item
-            for item in pdf_items
-            if str(admission_year) in Path(item["Key"]).name
-        ]
-
-        if year_matches:
-            # 같은 연도 파일이 여러 개면 그중 가장 최근 것을 씁니다.
-            target_item = max(year_matches, key=lambda item: item["LastModified"])
-            print(f"  입학연도({admission_year}) 일치 파일을 사용합니다.")
-        else:
-            print(
-                f"  ⚠️ 입학연도({admission_year})가 파일명에 포함된 "
-                "편람을 찾지 못해, 가장 최근 파일로 대체합니다."
-            )
-
-    if target_item is None:
-        # 파일명 알파벳 순서가 아니라, 실제 S3 마지막 수정 시각 기준으로
-        # 가장 최근 파일을 고릅니다. (파일명 정렬은 실제 업로드 순서와
-        # 다를 수 있어 잘못된 편람을 고를 위험이 있었습니다.)
-        target_item = max(pdf_items, key=lambda item: item["LastModified"])
-
-    target_key = target_item["Key"]
-
-    print(f"  선택된 파일: {target_key}")
-
-    local_path = _CACHE_DIR / Path(target_key).name
-
-    if local_path.exists():
-        print(f"  로컬 캐시 사용: {local_path}")
-    else:
-        print(f"  로컬 캐시가 없어 새로 다운로드합니다: {local_path}")
-
-        try:
-            s3_client.download_file(bucket_name, target_key, str(local_path))
-
-        except (ClientError, BotoCoreError) as error:
-            raise CurriculumPdfNotFoundError(
-                f"교육과정편람 PDF 다운로드에 실패했습니다: {error}"
-            ) from error
-
-    return local_path
+    if admission_year:
+        matches = [p for p in pdfs if str(admission_year) in p.name]
+        if matches:
+            return max(matches, key=lambda p: p.stat().st_mtime)
+    return max(pdfs, key=lambda p: p.stat().st_mtime)
 
 
 def _looks_like_summary_table(table: Optional[list]) -> bool:

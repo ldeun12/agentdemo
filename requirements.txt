@@ -1,5 +1,3 @@
-boto3
-botocore
 streamlit
 python-dotenv
 pydantic
@@ -7,3 +5,4 @@ pytest
 reportlab
 pdfplumber
 pymupdf
+google-genai

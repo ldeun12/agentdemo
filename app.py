@@ -1071,23 +1071,6 @@ def render_userinfo_page():
         return
 
     open_card(
-        title="학과 확인 (선택)",
-        description="성적증명서에서 학과가 자동으로 인식되지만, 도장/스티커에 가려지는 등의 이유로 잘못 인식될 수 있습니다. 정확한 학과명을 알고 계시면 직접 입력해주세요. 비워두면 자동 인식된 값을 사용합니다.",
-        pill="선택",
-        pill_class="pill-muted",
-    )
-
-    department_value = st.text_input(
-        "학과명",
-        value=st.session_state.department_value,
-        placeholder="예) 인공지능공학부",
-        label_visibility="collapsed",
-        key="userinfo_department",
-    )
-
-    close_card()
-
-    open_card(
         title="본인 성적증명서 기준 추가 요청",
         description="분석 결과에서 더 자세히 보고 싶은 내용을 입력할 수 있습니다.",
         pill="선택",
@@ -1135,12 +1118,10 @@ def render_userinfo_page():
 
     if prev_button:
         st.session_state.user_request_value = user_request
-        st.session_state.department_value = department_value
         go_to_page("home")
 
     if analyze_button:
         st.session_state.user_request_value = user_request
-        st.session_state.department_value = department_value
 
         validation = validate_user_request(user_request)
 
@@ -1188,7 +1169,7 @@ def render_loading_page():
 
     open_card(
         title="AI 분석 중",
-        description="Amazon Bedrock 기반으로 성적증명서와 교육과정 데이터를 분석하고 있습니다.",
+        description="Gemini와 로컬 공식 문서를 기반으로 성적증명서와 교육과정 데이터를 분석하고 있습니다.",
         pill="진행 중",
         pill_class="pill-info",
     )
@@ -1200,7 +1181,7 @@ def render_loading_page():
     try:
         uploaded_pdf_path = st.session_state.uploaded_pdf_path
 
-        status.info("성적증명서 PDF를 Amazon Bedrock AI가 분석하고 있습니다.")
+        status.info("성적증명서 PDF를 Gemini가 분석하고 있습니다.")
         progress.progress(20)
         time.sleep(0.5)
 
@@ -1213,7 +1194,7 @@ def render_loading_page():
 
         strategy_report = call_full_pipeline_safely(
             pdf_path=uploaded_pdf_path,
-            department=(st.session_state.department_value.strip() or None),
+            department=None,
             user_request=st.session_state.user_request_value,
         )
 

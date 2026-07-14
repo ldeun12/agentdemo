@@ -23,15 +23,12 @@ def run_full_analysis(
         department_hint=department_hint,
     )
 
-    department = (
-        department_hint.strip()
-        if department_hint and department_hint.strip()
-        else transcript.department.strip()
-    )
+    # 학과는 성적증명서에서 자동 추출한 값을 사용합니다.
+    department = transcript.department.strip()
 
     if not department:
         raise IntegrationError(
-            "학과를 확인할 수 없습니다. 학과를 직접 선택해주세요."
+            "성적증명서에서 학과를 확인할 수 없습니다. 학과 정보가 선명한 PDF인지 확인해주세요."
         )
 
     transcript = transcript.model_copy(
@@ -63,9 +60,8 @@ def run_full_pipeline(
 ) -> StrategyReport:
     """
     app.py 등 외부 코드가 기대하는 이름/인자에 맞춘 별칭 함수입니다.
-    실제 로직은 run_full_analysis와 동일하며, department는
-    department_hint로 그대로 전달됩니다 (사용자가 직접 입력한
-    학과가 있으면 자동 인식된 학과보다 항상 우선합니다).
+    실제 로직은 run_full_analysis와 동일합니다. department 인자는
+    이전 app.py와의 호환을 위해 남겨두었지만 학과는 PDF에서 자동 추출합니다.
     """
 
     return run_full_analysis(
