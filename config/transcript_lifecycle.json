@@ -1,0 +1,17 @@
+{
+  "Rules": [
+    {
+      "ID": "DeleteTemporaryTranscriptsAfterOneDay",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "temp-transcripts/"
+      },
+      "Expiration": {
+        "Days": 1
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 1
+      }
+    }
+  ]
+}
